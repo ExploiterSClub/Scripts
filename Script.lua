@@ -12,8 +12,6 @@ local rotationSpeed = 0.005
 local yaw = 0
 local pitch = 0
 local humanoid = nil
-local spinAngle = 0
-local spinSpeed = 20
 
 local function createBlock()
 	local p = Instance.new("Part")
@@ -38,9 +36,8 @@ local function updateCamera()
 		local distance = 10
 		local height = 3
 		local focus = block.Position
-		local horizontal = CFrame.new(focus) * CFrame.Angles(0, yaw, 0)
-		local vertical = CFrame.Angles(pitch, 0, 0)
-		local offset = vertical * CFrame.new(0, 0, distance)
+		local horizontal = CFrame.new(focus) * CFrame.Angles(pitch, yaw, 0) -- pitch then yaw for both axes facing
+		local offset = CFrame.new(0, 0, distance)
 		local finalPos = (horizontal * offset).Position + Vector3.new(0, height, 0)
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = CFrame.new(finalPos, focus)
@@ -57,10 +54,12 @@ local function moveBlock(dt)
 	if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir += Vector3.new(0, 0, 1) end
 	if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir += Vector3.new(-1, 0, 0) end
 	if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += Vector3.new(1, 0, 0) end
+	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0, 1, 0) end
+	if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0, -1, 0) end
 
 	if moveDir.Magnitude > 0 then
 		moveDir = moveDir.Unit
-		local moveCFrame = CFrame.new(Vector3.zero) * CFrame.Angles(0, yaw, 0)
+		local moveCFrame = CFrame.Angles(pitch, yaw, 0)
 		local worldMove = moveCFrame:VectorToWorldSpace(moveDir)
 		block.Position += worldMove * speed * dt
 	end
@@ -118,12 +117,8 @@ end)
 
 RunService.RenderStepped:Connect(function(dt)
 	if controlling and block then
-		spinAngle += spinSpeed * dt
-		if spinAngle > math.pi * 2 then
-			spinAngle -= math.pi * 2
-		end
-		local faceCFrame = CFrame.Angles(0, yaw, 0)
-		block.CFrame = CFrame.new(block.Position) * faceCFrame * CFrame.Angles(0, spinAngle, 0)
+		-- Face the block to pitch and yaw (x and y rotation)
+		block.CFrame = CFrame.new(block.Position) * CFrame.Angles(pitch, yaw, 0)
 		moveBlock(dt)
 		updateCamera()
 	else
