@@ -4,6 +4,40 @@ local Players = game:GetService("Players")
 local cam = workspace.CurrentCamera
 local plr = Players.LocalPlayer
 
+-- GUI Setup
+local PlayerGui = plr:WaitForChild("PlayerGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SpectateControlsGui"
+ScreenGui.Parent = PlayerGui
+ScreenGui.Enabled = false -- start hidden
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0.3, 0, 0, 100)
+Frame.Position = UDim2.new(0.5, 0, 0, 10) -- centered horizontally at top with 10 px offset
+Frame.AnchorPoint = Vector2.new(0.5, 0)
+Frame.BackgroundColor3 = Color3.new(0, 0, 0)
+Frame.BackgroundTransparency = 1
+Frame.Parent = ScreenGui
+
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(2, 0, 2, 0)
+TextLabel.BackgroundTransparency = 1
+TextLabel.TextColor3 = Color3.new(1, 1, 1)
+TextLabel.Font = Enum.Font.SourceSansBold
+TextLabel.TextSize = 18
+TextLabel.TextWrapped = true
+TextLabel.Text = [[
+CONTROLS:
+W/A/S/D = Move block
+Right Mouse Hold = Rotate camera
+E = Toggle spectate mode
+Space = Move block UP
+Left Shift = Move block DOWN
+]]
+TextLabel.Parent = Frame
+
+-- Variables
 local block = nil
 local controlling = false
 local rotating = false
@@ -36,8 +70,9 @@ local function updateCamera()
 		local distance = 10
 		local height = 3
 		local focus = block.Position
-		local horizontal = CFrame.new(focus) * CFrame.Angles(pitch, yaw, 0) -- pitch then yaw for both axes facing
-		local offset = CFrame.new(0, 0, distance)
+		local horizontal = CFrame.new(focus) * CFrame.Angles(0, yaw, 0)
+		local vertical = CFrame.Angles(pitch, 0, 0)
+		local offset = vertical * CFrame.new(0, 0, distance)
 		local finalPos = (horizontal * offset).Position + Vector3.new(0, height, 0)
 		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CFrame = CFrame.new(finalPos, focus)
@@ -59,7 +94,8 @@ local function moveBlock(dt)
 
 	if moveDir.Magnitude > 0 then
 		moveDir = moveDir.Unit
-		local moveCFrame = CFrame.Angles(pitch, yaw, 0)
+		-- Move relative to current yaw only (horizontal rotation)
+		local moveCFrame = CFrame.Angles(0, yaw, 0)
 		local worldMove = moveCFrame:VectorToWorldSpace(moveDir)
 		block.Position += worldMove * speed * dt
 	end
@@ -79,6 +115,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				block = createBlock()
 			end
 			controlling = true
+			ScreenGui.Enabled = true
 			if plr.Character and plr.Character:FindFirstChild("Humanoid") then
 				humanoid = plr.Character.Humanoid
 				humanoid.WalkSpeed = 0
@@ -86,6 +123,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			end
 		else
 			controlling = false
+			ScreenGui.Enabled = false
 			if block and block.Parent then
 				block:Destroy()
 				block = nil
@@ -110,14 +148,14 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if controlling and rotating and input.UserInputType == Enum.UserInputType.MouseMovement then
-		yaw -= input.Delta.X * rotationSpeed
+		yaw = yaw - input.Delta.X * rotationSpeed
 		pitch = math.clamp(pitch - input.Delta.Y * rotationSpeed, -math.rad(85), math.rad(85))
 	end
 end)
 
 RunService.RenderStepped:Connect(function(dt)
 	if controlling and block then
-		-- Face the block to pitch and yaw (x and y rotation)
+		-- Make block face camera rotation (yaw and pitch)
 		block.CFrame = CFrame.new(block.Position) * CFrame.Angles(pitch, yaw, 0)
 		moveBlock(dt)
 		updateCamera()
